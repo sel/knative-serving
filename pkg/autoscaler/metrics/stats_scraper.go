@@ -23,6 +23,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -427,6 +428,15 @@ func (s *serviceScraper) scrapeService(window time.Duration) (Stat, error) {
 	if err := grp.Wait(); err != nil {
 		// Ignore the error if we have received enough statistics.
 		if !errors.Is(err, ErrDidNotReceiveStat) || len(oldStatCh)+len(youngStatCh) < sampleSize {
+			numStats := len(oldStatCh) + len(youngStatCh)
+			var pods []string
+			scrapedPods.Range(func(key, value any) bool {
+				pods = append(pods, key.(string))
+				return true
+			})
+			s.logger.Warn(
+				fmt.Sprintf("%d pods were successfully scraped out of %d. Responses from: [%s]",
+					numStats, sampleSize, strings.Join(pods, "; ")))
 			return emptyStat, fmt.Errorf("unsuccessful scrape, sampleSize=%d: %w", sampleSize, err)
 		}
 	}
